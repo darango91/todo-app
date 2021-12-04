@@ -6,8 +6,8 @@ from flask import flash, make_response, request, redirect,\
     render_template, session, url_for
 from flask_login import login_required, current_user
 
-from app.firestore_service import get_todos, put_todo
-from app.forms import ToDoForm
+from app.firestore_service import get_todos, put_todo, delete_todo
+from app.forms import DeleteTodoForm, ToDoForm
 
 app = create_app()
 
@@ -41,19 +41,30 @@ def index():
 def hello():
     user_ip = session.get('user_ip')
     username = current_user.id
-    todos = [todo.to_dict()['description'] for todo in get_todos(username)]
+    todos = get_todos(username)
     todo_form = ToDoForm()
+    delete_form = DeleteTodoForm()
 
     context = {
         'user_ip': user_ip,
         'todos': todos,
         'username': username,
-        'todo_form': todo_form
+        'todo_form': todo_form,
+        'delete_form': delete_form,
     }
 
     if todo_form.validate_on_submit():
         put_todo(username, todo_form.description.data)
         flash('Tarea creada exitosamente')
-        redirect(url_for('hello'))
+        redirect(url_for('index'))
 
     return render_template('hello.html', **context)
+
+
+@app.route('/todos/delete/<todo_id>', methods=['POST'])
+@login_required
+def delete(todo_id):
+    user_id = current_user.id
+    delete_todo(user_id, todo_id)
+
+    return redirect(url_for('hello'))
